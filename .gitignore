@@ -24,3 +24,5 @@ assets/shared
 .cursorrules
 .env
 context/
+
+/build_native/

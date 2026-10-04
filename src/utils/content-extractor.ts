@@ -44,6 +44,7 @@ function normalizeText(html: string): string {
 }
 
 interface ContentResponse {
+	videoError?: string;
 	content: string;
 	selectedHtml: string;
 	extractedContent: ExtractedContent;

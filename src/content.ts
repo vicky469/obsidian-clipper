@@ -7,6 +7,7 @@ import { extractContentBySelector as extractContentBySelectorShared } from './ut
 import Defuddle from 'defuddle';
 import { createMarkdownContent } from 'defuddle/full';
 import { flattenShadowDom } from './utils/flatten-shadow-dom';
+import { insertXVideoEmbeds, resolveXVideoEmbeds, showXVideoWarning } from './utils/x-native-video';
 import { serializeChildren } from './utils/dom-utils';
 import { saveFile } from './utils/file-utils';
 import { debugLog } from './utils/debug';
@@ -88,6 +89,7 @@ declare global {
 	browser.runtime.sendMessage({ action: "contentScriptLoaded" });
 
 	interface ContentResponse {
+		videoError?: string;
 		content: string;
 		selectedHtml: string;
 		extractedContent: { [key: string]: string };
@@ -153,12 +155,16 @@ declare global {
 		}
 
 		if (request.action === "copyMarkdownToClipboard") {
-			flattenShadowDom(document).then(() => {
+			flattenShadowDom(document).then(async () => {
 				try {
+					const clipUrl = document.URL;
 					const defuddled = parseForClip(document);
+					const video = await resolveXVideoEmbeds(clipUrl, message => browser.runtime.sendMessage(message));
+					if (video.error) showXVideoWarning(document, video.error);
+					defuddled.content = insertXVideoEmbeds(defuddled.content, video.html);
 
 					// Convert HTML content to markdown
-					const markdown = createMarkdownContent(defuddled.content, document.URL);
+					const markdown = createMarkdownContent(defuddled.content, clipUrl);
 
 					// Copy to clipboard
 					const textArea = document.createElement("textarea");
@@ -180,9 +186,14 @@ declare global {
 		if (request.action === "saveMarkdownToFile") {
 			flattenShadowDom(document).then(async () => {
 				try {
+					const clipUrl = document.URL;
+					const pageTitle = document.title;
 					const defuddled = parseForClip(document);
-					const markdown = createMarkdownContent(defuddled.content, document.URL);
-					const title = defuddled.title || document.title || 'Untitled';
+					const video = await resolveXVideoEmbeds(clipUrl, message => browser.runtime.sendMessage(message));
+					if (video.error) showXVideoWarning(document, video.error);
+					defuddled.content = insertXVideoEmbeds(defuddled.content, video.html);
+					const markdown = createMarkdownContent(defuddled.content, clipUrl);
+					const title = defuddled.title || pageTitle || 'Untitled';
 					const fileName = title.replace(/[/\\?%*:|"<>]/g, '-');
 					await saveFile({
 						content: markdown,
@@ -199,6 +210,8 @@ declare global {
 		}
 
 		if (request.action === "getPageContent") {
+			const requestedUrl = document.URL;
+			const videoPromise = resolveXVideoEmbeds(requestedUrl, message => browser.runtime.sendMessage(message));
 			// Flatten shadow DOM before extraction (async, needs main world)
 			const flattenTimeout = new Promise<void>(resolve => setTimeout(resolve, 3000));
 			Promise.race([flattenShadowDom(document), flattenTimeout]).then(async () => {
@@ -221,6 +234,9 @@ declare global {
 				);
 				const defuddled = await Promise.race([defuddle.parseAsync(), parseTimeout])
 					.catch(() => defuddle.parse());
+				const video = await videoPromise;
+				if (document.URL !== requestedUrl) throw new Error('The page changed during clipping. Open the clipper again.');
+				defuddled.content = insertXVideoEmbeds(defuddled.content, video.html);
 				const extractedContent: { [key: string]: string } = {
 					...defuddled.variables,
 				};
@@ -268,6 +284,7 @@ declare global {
 				const cleanedHtml = doc.documentElement.outerHTML;
 
 				const response: ContentResponse = {
+					videoError: video.error,
 					author: defuddled.author,
 					content: defuddled.content,
 					description: defuddled.description,

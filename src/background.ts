@@ -1,5 +1,6 @@
 import browser from 'webextension-polyfill';
 import { detectBrowser } from './utils/browser-detection';
+import { handleXVideoRequest } from './utils/x-native-video';
 import { updateCurrentActiveTab, isValidUrl, isBlankPage, isNormalPageUrl } from './utils/active-tab-manager';
 import { TextHighlightData } from './utils/highlighter';
 import { debounce } from './utils/debounce';
@@ -7,6 +8,11 @@ import { Settings } from './types/types';
 import { debugLog } from './utils/debug';
 import { incrementStat } from './utils/storage-utils';
 import { hasStoredHighlights } from './utils/url-utils';
+
+browser.runtime.onMessage.addListener((request: unknown, sender) => {
+	if (!request || typeof request !== 'object' || (request as { action?: string }).action !== 'resolveXVideos') return;
+	return handleXVideoRequest(request, sender, (host, message) => browser.runtime.sendNativeMessage(host, message));
+});
 
 const YOUTUBE_EMBED_RULE_ID = 9001;
 const YOUTUBE_INNERTUBE_RULE_ID = 9002;

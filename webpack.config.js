@@ -169,6 +169,7 @@ module.exports = (env, argv) => {
 				}
 			},
 			new webpack.DefinePlugin({
+				'NATIVE_X_VIDEO': JSON.stringify(!isFirefox && !isSafari),
 				'process.env.NODE_ENV': JSON.stringify(argv.mode),
 				'DEBUG_MODE': JSON.stringify(!isProduction)
 			}),

@@ -59,6 +59,38 @@ This will create three directories:
 
 ### Install the extension locally
 
+#### Local X video embeds (macOS Chrome)
+
+This local build can resolve public X post videos using an installed `yt-dlp`.
+It adds an inline video player with playback controls to the clipped note.
+Playback streams from X and requires an internet connection; videos are not
+saved as offline attachments. This integration does not capture subtitles or
+use browser cookies.
+
+Build Chrome and the native helper, then register the helper for the **local**
+extension's ID (shown on `chrome://extensions` with Developer mode enabled):
+
+```sh
+npm run build:chrome
+npm run build:x-video-host
+node scripts/install-x-video-host.mjs --extension-id=YOUR_LOCAL_EXTENSION_ID --yt-dlp="$(command -v yt-dlp)"
+```
+
+Reload the local extension, accept Chrome's native-messaging permission if
+prompted, refresh the X page, then open the clipper again. The local version is
+labeled **1.7.1 (local yt-dlp)**. A store-installed copy with the same base version
+does not include this feature. Failed requests display a warning in the preview;
+the note text remains available. Link resolution has an 18-second deadline.
+
+The installer copies the built helper to
+`~/Library/Application Support/Obsidian Web Clipper/native` and registers
+`com.obsidian_clipper.x_video` under Chrome's `NativeMessagingHosts` directory.
+Only the supplied extension ID can call it. Rerun the installer after rebuilding
+the helper or changing the Node/yt-dlp executable locations. This integration
+does not run in the CLI/API, Safari, Firefox, or standalone reader exports.
+
+#### Browser installation
+
 For Chromium browsers, such as Chrome, Brave, Edge, and Arc:
 
 1. Open your browser and navigate to `chrome://extensions`

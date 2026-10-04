@@ -699,6 +699,14 @@ async function refreshFields(tabId: number, { checkTemplateTriggers = true, rebu
 		}
 
 		const extractedData = await extractionPromise;
+		document.getElementById('video-extraction-warning')?.remove();
+		if (extractedData?.videoError) {
+			const warning = document.createElement('p');
+			warning.id = 'video-extraction-warning';
+			warning.setAttribute('role', 'alert');
+			warning.textContent = `Video preview unavailable: ${extractedData.videoError}`;
+			document.querySelector('.clipper')?.prepend(warning);
+		}
 		if (extractedData) {
 			const currentUrl = tab.url;
 
